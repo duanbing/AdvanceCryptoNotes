@@ -1,0 +1,425 @@
+ \documentclass[a4paper,11pt]{article}
+
+ % define the title
+\author{duanbing@baidu.com}
+\title{The Modern Cryptography Notes}
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{graphicx}
+% margin control
+\usepackage{geometry}
+\geometry{a4paper,scale=0.8}
+
+% flow control
+\usepackage{tikz}
+\usetikzlibrary{arrows,shapes,chains}
+
+\newtheorem{myDef}{Definition}
+
+\begin{document}
+
+ \maketitle 
+ 
+  \tableofcontents
+
+
+ \section{Secret Sharing}
+ 
+ In a multiple parties Computation Protocol here, there are :
+
+ \begin{itemize}
+ \item  n participants $P_{1}$, $P_{2}$, ..., $P_{n}$
+ \item  n inputs $x_i$ from ${P_i}$
+ \item a function f that that participants want to evaluate on all the inputs,  and the goal is to compute  $ y = f(x_1, ..., x_n) $ 
+ \end{itemize}
+ 
+ we need to ensure: 1.  the correctness of the result; 2.  $P_i$ cann't get $x_j$ when $ i \neq j$.
+
+\subsection{Scheme}
+
+A secret sharing schemes usually involves 
+\begin{itemize}
+\item a data provider D who has secret s.
+\item n parties $P_1, ... , P_n$.
+\end{itemize}
+
+and a \textit{k},  s.t.
+
+\begin{itemize}
+\item   any subset of \textit{k + 1} parties can reconstruct the secret from it's shares, 
+\item  any subset of \textit{k} or less than \textit{k} can't retrieve any partial information on the secret \textit{s}.
+\end{itemize}
+
+So we  
+
+\begin {itemize}
+\item select \textit{k} random values $ \alpha_i  $  from finite domain $Z_p$, and construct the polynomial 
+\begin{displaymath}
+f(x) = s + \alpha_{1}x + \alpha_{2}x^{2} + ... + \alpha_{k}x^{k}   \in Z_{p}[x],  f(0) = s, is the secret.
+\end{displaymath}
+
+\item evaluate f on  the points \textit{i} = 1, 2, ..., n and send to the \textit{i-th} participant $P_i$ it's share $f_i = f(i) \in Z_p$ 
+
+\end{itemize}
+
+Until now, for any polynomial $f(x) \in Z_{p}[x] of degree \textit{k} it holds that$
+\begin{equation}　
+f(x) = f(1)\sigma_{x} + f(2)\sigma_2(x) + ... + f(k+1)\sigma_{k+1}(x)   \in Z_{p}[x]  \label{equ:largrange}
+\end{equation}
+where $\sigma_{i}(x)  \in Z_{p}[x]$ are the degree-k \textbf{interpolation} polynomials defined as:
+
+\begin{displaymath}
+\sigma_{i}(x) = \prod_{j=1, j \neq i}^{k+1} \frac{x - j} {i - j}
+\end{displaymath}
+note that the $\sigma_{i}(x) only depend on \textit{i, j} \in {1, 2, ... n}$ and not on the polynomial f.
+
+Therefore, any set of \textit{k + 1} parties can computes $s = f(0)$ if all parties jointly compute the \textbf{Lagrange interpolation}.
+
+\subsection{Example}
+
+\textbf{Setting}: two data providers, $D_1$ and $D_2$, have each other one share ($s_1$ and $s_2$ respectively) and want to securely compute $s_1 + s_2$
+
+\textbf{Steps}: 
+
+\begin{itemize}
+\item $D_{i}$ uses Shamir's SSS to share $s_i$ among n parties
+\item each party $P_i$ holds two shares, $f_i$ from $D_1$ and $g_i$ from $D_2$
+\item each party $P_i$ locally computes $s(i) = f_i + g_i = f(i) + g(i) = (f+g)(i) $
+\item any subsets of k + 1 parties now can jointly compute $s_1 + s_2$: by using Largrange interpolation between the s(i), i.e. the parties compute $h(x) = (f + g)(x) $from the values s(i) and the interpolation polynomial $\sigma_{i}(x)$, the final result is $h(0) = s_1 + s_2$; 
+
+\end{itemize}
+
+For $D_1$,
+
+$D_{1}$'s secret is $s_1 = 3$. polynomial for secret sharing is $f(x) = \textbf{3} + 2x - x^{2} $.   2 and -1 is random $\in Z_p$, and split to 3 shares for 3 participants: 
+$f_1 = f(1) = 4, f_2 = f(2) = 3, f_3 = f(3) = 0$
+
+For $D_2$,
+
+$D_{2}$'s  secret is $s_2$ = -1, $g(x) = -1 + x + x^2$, shares is $g_1 = g(1) - 2, g_2 = g(2) = 5, g_3 = g(3) = 11$
+
+
+Then the local addition of the shares is:
+
+\begin{equation}
+\begin{split}
+P_1 : h(1) &= f_1 + g_1 = 5,    \\
+P_2 : h(2) &= f_2 + g_2 = 8,    \\
+P_3 : h(3) &= f_3 + g_3 = 11. \\
+\end{split}
+\end{equation}
+
+then calculate the coefficient by Largrange interpolation:
+
+\begin{equation}
+\begin{split}
+\sigma_{1}(x) &= \frac{x - 2}{1 - 2} * \frac{x - 3}{1-3} = \frac{x^2 - 5x + 6}{2},  \\
+\sigma_{2}(x) &= \frac{x - 1}{2 - 1} * \frac{x - 3}{2-3} = -(x^2 - 4x + 3),  \\
+\sigma_{3}(x) &= \frac{x - 1}{3 - 1} * \frac{x - 3}{3-3} = \frac{x^2 - 3x + 2}{2},  \\
+\end{split}
+\end{equation}
+
+Thus: $ h(x) = \sum_{i=1}^{3}h(i)\sigma_{i}(x) = 3x + 2$ and  $h(0) = s_1 + s_2 = 2$, which is the result of this computing.
+ 
+\section{HM}
+
+HM(Homomorphic Encryption) is a form of encryption that allows computation on ciphertexts, generating an encrypted result which, when decrypted, matches the result of the operations as if they had been performed on the plaintext. Homomorphic encryption can be used for privacy-preserving outsourced storage and computation. 
+
+\subsection{Pillier Homomorphic Encryption}
+
+The Paillier cryptosystem, invented by and named after Pascal Paillier in 1999, is a probabilistic asymmetric algorithm for public key cryptography. The problem of computing n-th residue classes is believed to be computationally difficult. The decisional composite residuosity assumption is the intractability hypothesis upon which this cryptosystem is based.
+
+The scheme is an additive homomorphic cryptosystem; this means that, given only the public key and the encryption of $m_{1}$ and $m_{2}$, one can compute the encryption of $m_{1}+m_{2}$.
+
+\subsubsection{Composite Residence Schema}
+
+We set n = pq where p and q are large primes,  denotes $\phi(n) = (p-1)(q-1)$ by Euler's function. and we denote $\lambda(n) = lcm(p-1, q-1)$ as the least common multiple of p-1 and q-1, we adopt $\lambda$ as $\lambda(n)$.
+
+For any $w \in Z_{n^2}^{*}$,  the following equations holds since $\phi(n) = (p-1, q-1) | lcm(p-1, q-1) = \lambda$:
+
+\begin{equation}
+\begin{split}
+w^{\lambda} &= 1 mod(n),  \\
+w^{n\lambda} &= 1 mod(n^2),  \\
+\end{split}
+\end{equation}
+
+
+\begin{myDef}
+    A number z is said to be a n-th residue module $n^2$ if there exists a number  $y \in Z_{n^2}^{*}$, such that:
+    \begin {equation}
+    	z = y^n mod (n^2)
+    \end {equation}
+\end{myDef}
+
+The problem of n-th residues is a multiplicative subgroup of $Z_{n^2}^{*}$ of order $\phi(n)$. Each n-th residue z has exactly n roots of degree , among which exactly on is strictly smaller than n (namely $\sqrt[n]{z}$)
+
+we have $\phi(n^2) = pq(p-1)(q-1)$  by Euler's function, and $(1+n)^x = 1+xn (mod\ n^2)$.  
+
+As for prime residuosity CR[n], deciding n-th rediduosity is believed to be computationally hard. 
+
+We define $\epsilon_g$,  where $g  \in Z_{n^2}^{*}$ by 
+\begin{equation}
+\begin{split}
+Z_n \times Z_{n}^{*} &\mapsto Z_{n^2}^{*} \\
+(x, y) &\mapsto g^x \cdot {g^y} mod\ n^2 \\
+\end{split}
+\end{equation}
+
+// to be continued
+
+
+\subsubsection {Implementation}
+
+\begin{itemize}
+\item KetGen: 
+\begin{enumerate}
+\item Choose 2 large primes, p and q, which should be of equal length, s.t. $gcd(pq, (p-1)(q-1)) = 1$.
+\item Compute n = pq and $\lambda$ = lcm(p-1, q-1);
+\item set $g = n+1 \in Z_{n^2}^{*}$
+\item Ensure n divides the order of g by checking the existence of the following modular multiplicative inverse:  $\mu  = (L(g^{\lambda}\ mod\ n^2))^{-1}\ mod\ n$, where $L(x) = \frac{x-1}{n}$
+\end{enumerate}
+
+The private key is ($\lambda,\mu$), and public key is (n, g).
+
+\item Encryption
+\begin{enumerate}
+\item let M be a message to be encrypted where $0 \leq m \leq n$
+\item select random r where $0 \le r \le n$ and $r \in Z_{n^2}^{*}$ to ensure gcd(r, n) = 1.
+\item compute ciphertext as: $c = g^m \cdot r^n\ mod\  n^2$
+\end{enumerate}
+
+\item Decryption
+\begin{enumerate}
+\item Let c be the ciphertext to decrypt, where $c \in Z_{n^2}^{*}$
+\item Compute the plaintext message as: $m = L(c^{\lambda}\ mod\ n^2)\cdot \mu\ mod\ n$
+\end{enumerate}
+
+Proving by :
+\begin{equation}
+\begin{split}
+m &= L(c^{\lambda}\ mod\ n^2)\cdot \mu\ mod\ n    \\
+  &= \frac{L(g^{m\lambda} \cdot r^n\ mod\ n^2) } {L(g^{\lambda}\ mod\ n^2)}\ mod\ n      \\
+  &=  \frac{L(g^{m\lambda}\ mod\ n^2)} {L(g^{\lambda}\ mod\ n^2)}\ mod\ n \  \ \ (by\ r^{n\lambda} = 1\ mod\ n^2) \\
+  &= \frac{nm\lambda\ mod\ n^2} {n\lambda\ mod\ n^2}\ mod\ n   \ \ \ (by\ (1+n)^x = (1 + nx)\ mod\ n^2) \\
+  &= m 
+\end{split}
+\end{equation}
+
+\item {Homomorphic properties}
+
+\begin{itemize}
+\item {Homomorphic addition of plaintexts}
+\begin{equation}
+\begin{split}
+D(E(m_1, r_1) \cdot E(m_2, r_2)\ mod\ n^2) = m_1 + m_2\ mod\ n \\
+D(E(m_1, r_1) \cdot g^{m_2}\ mod\ n^2) = m_1 + m_2\ mod\ n \\
+\end{split}
+\end{equation}
+\item {Homomorphic multiplication of plaintexts}
+\begin{equation}
+\begin{split}
+D(E(m_1)^{m_2}\ mod\ n^2) &= m_1 m_2\ mod\ n \\
+D(E(m_2)^{m_1}\ mod\ n^2) &= m_1 m_2\ mod\ n \\
+\end{split}
+\end{equation}
+\end{itemize}
+
+\end{itemize}
+
+\section{ABE}
+ABE is short for  Attribute based Encryption.
+
+\subsection{bilinear map} 
+We  let $G_1, G_2$ be multiplicative cyclic groups of prime order p,  and g is generator of group $G_1$:
+
+$e: G_1 \times G_1 -> G_2$ is bilinear mapping;  and the properties of bilinear mapping heads to  \cite{s1}, in summary below:
+
+\begin{enumerate}
+\item Bilinearity: for u, v $ \in G_0$, and a, b $\in Z_p$, we have $e(u^a, v^b) = e(u, v)^{ab}$
+\item Non-degeneracy:  $e(g, g) \neq 1$
+\end{enumerate}
+and we can derive $ e(u  v, h) = e(u, h)  e(v, h)$ easily. and map e is symmetric.
+
+\subsection{Schema}
+From \cite{s1} ,   this algorithm consists of 4 stages: 
+\begin {itemize}
+\item Setup(d):  d is threshold value.
+  \begin{equation} 
+  \begin{split}
+  	MK &= (t_1, t_2, ... , t_n, y);  y, t_i \in Z_q,  \\
+	PK &= (T_1=g^{t_1}, T_2=g^{t_2}, ...,T_n=g^{t_n}, Y = e(g, g)^y)  \\
+  \end{split}
+  \end{equation}
+\item Keygen:  A set of user attributes($A_U$) is supplied to the input of the private key generation algorithm, and the output turns user's private key, run by a \textbf{trusted authority}, TA. 
+
+let p be (d - 1) ordered randomly polynomial, p(0) = y,
+
+$SK: \forall i \in A_U, {D_i = g^{\frac{p(i)}{t_i}}} $
+
+\item Encrypt(PK, M, $A_{CT}$):
+
+Owner data encrypt a message $M \in G_2$ using a set of atttibutes $A_{CT}$ and a random number $s \in Z_q$, CT is the cipher text as a output.
+
+$CT  =  (A_{CT}, E=MY^s=Me(g, g)^{ys}, \{ E_i = g^{t_{i}s}\}_{\forall i \in A_i})$.
+
+\item Decrypt:
+
+a set of user attributes $A_U$ and the encrypted data are supplied to the input of the decryption algorithm, and returns M. 
+
+if $|A_U \cap A_{CT}| \ge d$, for $i \in A_U \cap A_{CT}, e(E_i, D_i) = e(g, g)^{p(i)s}$
+
+then $Y^s = e(g, g)^{p(0)s}  = e(g, g)^{ys}$,  s.t.  $M = E/{Y^s}$ 
+
+\end {itemize}
+
+\subsection {Ciphertext-policy Attribute-based Encryption}
+
+CP-ABE puts the access policy in the ciphertext, and private key corresponds to  a set of attributes. If the attributes contained in the private key corresponding to the structure of the ciphertext access, the user can decrypt the ciphertext. 
+
+For random parameters $ \alpha, \beta  \in Z_p$ selected by TA, 
+
+\begin{itemize}
+\item Setup:  
+ \begin{equation} 
+  \begin{split}
+  	MK &= (\beta, g^{\alpha});  \\
+	PK &= (G_0, g, h=g^{\beta}, f=g^{\frac{1}{\beta}}, e(g, g)^{\alpha})  \\
+  \end{split}
+  \end{equation}
+  Note that f is used only for delegation.
+  
+\item Keygen(MK, S):   select a random $ \gamma \in Z_p $, and  $ \forall j \in A_U$, select random ${\gamma}_j \in Z_p $  
+
+$SK = (D = g^{\frac{\alpha + \gamma}{\beta}},  \forall j \in A_U,  D_j = g^{\gamma} · H(j)^{{\gamma}_j}, D_{j}^{'} = g^{r_j}),  $
+
+where $H: \{0, 1\}^{*} -> G_0$, mapping the attributes of node to a elements in group $G_0$
+
+TA sends the SK to data owner by a closed channel. 
+
+\item Encrypt(PK, M, $T$)
+This algorithm encrypts a message M under \textbf{the tree access structure $T$}.
+
+
+Chooses a polynomial $q_x$ for each node x(including the leaves) in the tree $T$,  
+\begin{itemize}
+	\item Starting from the root node R, for each node x in the tree,it set the degree $d_x$ of the polynomial $q_x$ to be one less than the threshold value $k_x$ of that node, that is $d_x = k_x - 1$
+	\item Starting from the root node R, it chooses a random $s \in Z_p$, and sets $q_R(0) = s$. 
+	\item Choosing $d_R$ other points of the polynomial $q_R$ randomly to define it completely. For any other nodes x, it sets $q_x(0) = {q_{parents(x)}(index(x))}$, and chooses $d_x$ other points randomly to completely define $q_x$.  
+\end{itemize}
+
+Let Y be the set of leaf node in $T$,  then
+
+$ CT = (T, E = Me(g, g)^{\alpha{s}}, C = h^s,  \forall y \in Y:  C_y = g^{q_y(0)}, C_y^{'} = H(att(y))^{q_y(0)}) $  
+
+where $att(y)$ represents the attribute of leaf y.
+
+\item Decrypt(CT, SK):
+
+Define a recursive algorithm:
+if x is a leaf node from $A_{CT}$,  let i = attr(x), if $i \in S$,   
+\begin {equation}\label{equ:decryptnode}　
+\begin {split}
+DecryptNode(CT, SK, x) &= \frac{e(D_i, C_x)}{D_i^{'}, C_x^{'}}  \\
+	&=\frac{e(g^{\gamma} * H(i)^{{\gamma}_i},  g^{q_x(0)}) } {e(g^{r_i}, H(i)^{q_x(0)})}  \\
+	&=\frac{{e(g^{\gamma},  g^{q_x(0)}) } * {e(H(i)^{{\gamma}_i},  g^{q_x(0)}) } } {e(g^{r_i}, H(i)^{q_x(0)})}  \\
+	&=e(g,g)^{rq_x{(0)}}
+\end{split}
+\end {equation}
+
+
+if  $x \notin A_{CT}, DecryptNode(CT, SK, x) = \perp$, which means CT can not decrypted correctly.
+
+if x is non-leaf node, for all nodes z that are children of node x, it calls DecryptNode(CT, SK, z) and store the output in $F_z$. let $S_x$ be an arbitary $k_x$-sized set of child nodes z such that $F_z \neq \perp$.  if no such set exists then the node was not satisfied and the function returns $\perp$
+
+otherwise we can also get: $ DecryptNode(CT, SK, x)  = e(g,g)^{rq_x{(0)}}$.   the proof refers to \cite{s1}.
+
+Now calling the DecryptNode on the root Node R of the tree T:
+$DecryptNode{CT, SK, R} = e(g, g)^{rq_R(0)} = e(g, g)^{rs}$
+and finally decrypted by 
+\begin{equation}
+\tilde{C}/(e(C, D) / A) = \tilde{C} / (e(h^s, g^{{\alpha + \gamma}/\beta})/e(g, g)^{rs}) = M  \label{equ:decrypt}
+\end{equation}
+
+\subsection {CP-ABE Example}
+In CP-ABE. the access tree struct T is used to hide the secret. 
+
+\begin{enumerate}
+\item Assumption:  
+\begin{equation}
+\begin{split}
+Policies ::= 
+	& ((CS faculty \land Master \land Grade 2) \lor Teacher), \\
+	& (Teacher \land (Net Lab \land Cloud Lab)),  \\
+	& (CS faculty \land Master \land Grade 2) \and (Net Lab \lor Cloud Lab)  \\
+\end{split}
+\end{equation}
+
+and the threshold = 2/3.
+
+\item Construct T
+
+we let secret $s$ on the root is 5.  let's construct the polynomial $q$ of root node as R with a threshold $k_x$, then get the degree $d_x = k_x - 1 = 1, q_R(0) = s$,   then we choose 3 as a random $r \in Z_q$  to complete the polynomial $q$ which you see on the right side of the root node R in the graph below. 
+
+then index the children $x$ from 1 to $n_{children}$, and calculate the $q_x(0)$ with $f(x) = 5 + 3x$. and calculate the secret of all node of $T$ recursively with this algorithm completely. 
+
+
+\thispagestyle{empty}
+ % 流程图定义基本形状
+\tikzstyle{node} = [rectangle, rounded corners, minimum width=1cm, minimum height=1cm,text centered, draw=black]
+%\tikzstyle{leaf} = [rectangle, rounded corners, minimum width=3cm, minimum height=1cm,text centered, draw=black, fill=red!30]
+\tikzstyle{arrow} = [thick,-,>=stealth]
+
+\begin{tikzpicture}[node distance=2cm]
+ %定义流程图具体形状
+\node (root) [node] {2/3};
+\coordinate [label=right: \textbf{{f(x)=5+3x}}] (A) at (1cm,0);
+
+\node (c1) [node, below of=root, xshift=-4cm] {3/3};
+\coordinate [label=right: \textbf{{f(x)=8+4x+$7x^2$}}] (B) at (-8cm,-2cm);
+
+\node (c11) [node, below of=c1,xshift=-2cm] {CS faculty};
+\node (c12) [node, below of=c1, xshift=0cm] {Master};
+\node (c13) [node, below of=c1, xshift=2cm] {Grade2};
+
+\node (c2) [node, below of=root, xshift=0cm] {Teacher};
+\node (c3) [node, below of=root, xshift=4cm] {1/2};
+\coordinate [label=right: \textbf{{f(x)=14}}] (C) at (5cm,-2cm);
+
+\node (c31) [node, below of=c3, xshift=-1cm] {NetLab};
+\node (c32) [node, below of=c3, xshift=1cm] {CloudLab};
+
+
+ %连接具体形状
+\draw [arrow](root) -- node[above]{8} (c1);
+\draw [arrow](root) -- node[left]{11} (c2);
+\draw [arrow](root) -- node[above]{14}  (c3);
+
+\draw [arrow](c1) -- node[left]{19}(c11);
+\draw [arrow](c1) -- node[left]{44}(c12);
+\draw [arrow](c1) -- node[right]{83}(c13);
+
+\draw [arrow](c3) -- node[left]{14}(c31);
+\draw [arrow](c3) -- node[right]{14}(c32);
+
+
+\end{tikzpicture}
+
+\item Decryption
+
+Firstly, we decrypt all the leaves by formula \ref{equ:decryptnode}. For ${CS faculty}$ , we decrypt and get the secret 19,  and it's index is 1 as the child of node $3/3$, so it's denoted as a point (1, 19) of polynomial of node $3/3$. 
+Also we get (2, 44), (3, 83) correspondingly.  Using the 3 points we can calculate the polynomial of node $3/3$  by Largrange interpolation formula \ref{equ:largrange}, which is $f(x) = 8 + 4x + 7x^2$, so we get $q_{3/3}(0) = f(0) = 8$ and 8 can be used to calculate it's parent's secret.  
+Eventually, we can get root node R's secret 5.
+
+\end{enumerate}
+
+\end{itemize}
+
+ \begin{thebibliography}{99}
+ \bibitem{s1} Bethencourt, J., Sahai, A., Waters, B. (2007). Ciphertext-Policy Attribute-Based Encryption. 2007 IEEE Symposium on Security and Privacy (SP ’07).
+\bibitem{s2} Paillier, P. (n.d.). Public-Key Cryptosystems Based on Composite Degree Residuosity Classes. Lecture Notes in Computer Science, 223–238
+\bibitem{s3} Adachi, Tomoko. "Composite residuosity and its application to cryptography (Algebraic Systems and Theoretical Computer Science)." (2012).
+ \end{thebibliography}
+
+ \end{document}
+ 
