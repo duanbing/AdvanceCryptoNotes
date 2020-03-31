@@ -1,0 +1,134 @@
+ \documentclass[a4paper,11pt]{article}
+
+ % define the title
+\author{duanbing@baidu.com}
+\title{ECC, Commitment and Bilinear mapping}
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{subfigure}
+% margin control
+\usepackage{geometry}
+\geometry{a4paper,scale=0.8}
+
+\usepackage{cite}
+
+% flow control
+\usepackage{tikz}
+\usetikzlibrary{arrows,shapes,chains}
+
+\newtheorem{myDef}{Definition}
+
+\begin{document}
+
+\maketitle  
+\tableofcontents
+
+\section{Elliptic-curve cryptography}
+ECC  is an approach to public-key cryptography based on the algebraic struct on the finite field. and Elliptic curves are applicable for key agreement, digital signatures, pseudo-random generators and other tasks. ECC  is assumed that finding the discrete logarithm of a random elliptic curve element with respect to a publicly known base point is infeasible. 
+
+\subsection {Definition}
+
+For current cryptographic purposes, an elliptic curve is a plane curve in finite field(e.g. the most common examples of finite fields are given by the integer mod p where p is a prime number) which consists of the points satisfying the equation (in Weierstras form)
+\begin{equation}
+y^2 = x^3 + ax + b   \label{con:Weierstras}
+\end{equation}
+
+For example, the secp256k1 curve is based on an elliptic curve in the form: $y^2=x^3+7$ (where a=0, b=7), and visualized as bellow:
+
+\begin{figure}[H]
+\centering
+\includegraphics[scale=0.5]{./images/bitcoin-elliptic-curve.png}
+\caption{secp256k1 curve}
+\end{figure}
+and desmos\footnote{https://www.desmos.com/calculator/ialhd71we3}  provides us a convenient way to visualize curves.
+
+\subsection{Addition and Multiplication on ECC}
+The finite field $F_p$  (where p is prime and p > 3) or $F_{2m}$ (where p = 2m). This means that the field is a square matrix of size p x p and the points on the curve are limited to integer coordinates within the field only. All algebraic operations within the field (like point addition and multiplication) result in another point within the field. 
+
+An elliptic curve over the finite fields $F_p$ consists of:
+\begin{itemize}
+\item a set of integer coordinates (x, y), such that 0 $\leq$ x, y $<$ p;
+\item staying on the elliptic curve  \ref{con:Weierstras}
+\end{itemize}
+
+Example of elliptic curve over the finite field $F_{17}$ : $y^2 = x^3 + 7 (mod 17)$ as below:
+
+elliptic-curve-over-f17-example.png
+\begin{figure}[H]
+\centering
+\includegraphics[scale=0.5]{./images/elliptic-curve-over-f17-example.png}
+\caption{elliptic-curve-over-$F_{17}$}
+\end{figure}
+
+It's easy to check p(5, 8) is on the curve, but p(9, 15) doesn't on it.
+
+Two points over an elliptic curve can be added and the result is another point on the curve, which is called the EC point addition.  Point at infinity is also written as (0, 0) or just 0,  and given:
+\begin{equation}
+\begin{split}
+{\displaystyle {\begin{aligned}{\mathcal {O}}+{\mathcal {O}}={\mathcal {O}}\\{\mathcal {O}}+P=P\end{aligned}}}
+\end{split}
+\end{equation}
+
+
+Also EC point multiplication can be defined by $P = k \cdot G$, in which P and G are the point on the curve and k is an integer.
+
+The security of modern ECC depends on the intractability of determining n from P = k$\cdot$G given known values of P and G if n is large, which is known as the elliptic curve discrete logarithm problem by analogy to other cryptographic systems.
+
+For n $\cdot$ G = O,  we define n as the order, and G as base point.  The k (k < n) be called the private key and P as the public key.
+
+\subsection{ECDSA}
+\begin{itemize}
+\item Key and signature-size
+As with elliptic-curve cryptography in general, the bit size of the public key believed to be needed for ECDSA is about twice the size of the security level, in bits. For example, at a security level of 80 bits (meaning an attacker requires a maximum of about$2^{80}$ operations to find the private key) the size of an ECDSA public key would be 160 bits, whereas the size of a DSA public key is at least 1024 bits. On the other hand, the signature size is the same for both DSA and ECDSA: approximately 4t bits, where t is the security level measured in bits, that is, about 320 bits for a security level of 80 bits.
+
+\item Signature generation algorithm(curve, G, n)
+curve is a ECC equation, G is the base point on the curve, n is the order of G and must be prime, and meets nG=O. 
+
+Alice creates a key pair, consisting of a private key integer $d_{A}$, randomly selected in the interval [1,n-1]; and a public key curve point $Q_{A}=d_{A}\times G$. We use $\times$  to denote elliptic curve point multiplication by a scalar.
+For Alice to sign a message $m$, she follows these steps:
+\begin{enumerate}
+\item Calculate $e = Hash(m)$; e.g.  SHA-2 as Hash;
+\item let $z$ be the $L_n$ leftmost bits of $e$, where $L_n$ is the bit length of the group n.
+\item Select a cryptographically secure random integer k from [1,n-1] as the private key;
+\item Calculate the curve point $(x_1, y_1) = k \times G$.
+\item Calculate $r = x_1 mod n$, if r = 0, go back to step 3.
+\item Calculate $s = k^{-1}(z + rd_a) mod n$. if s = 0, go back to step 3.
+\item The signature is the pair $(r,s)$. (And (r, -s mod n)is also a valid signature.)
+\end{enumerate}
+Be careful that k must be different for each signature. 
+
+\item Signature generation algorithm($Q_A$, sig):  $Q_A$ is point of public-key curve point.
+Before verifying, checkout: 
+\begin{enumerate}
+\item Check that $Q_A$ is not equal to $O$ and $n \times Q_A = O$
+\item Check that $Q_A$ lies on the curve.
+\end{enumerate}
+
+Then:
+\begin{enumerate}
+\item Check that $r$ and $s$ are in [1, n-1], or return Invalid;
+\item Calculate c = HASH(m), which is the same function in the signature generation;
+\item Let $z$ be the $L_n$ leftmost bits of $e$
+\item Calculate $u_1 = zs^{-1}\ mod\ n$  and $u_2 = rs^{-1}\ mod\ n$
+\item Calculate the curve point $(x_1, y_1) =  u_1 \times G + u_2 \times Q_A$. if $(x_1, y_1) = O$ then the sig is invalid.
+\item if $ r = x_1 mod\ n$, return valid, or invalid.
+\end{enumerate}
+
+\end{itemize}
+Proof omits and you can find it easily. 
+
+\subsection{Pederson Commitment}
+
+A commitment schema is cryptographic primitive that allows one to commit to a chosen value whole keep it hidden to others, with the ability to reveal the committed value later.
+
+\section{Bilinear Mapping Construction on ECC}
+
+
+
+
+\bibliographystyle{plain}
+\bibliography{chapter2_ref} %这里的这个ref就是对文件ref.bib的引用
+
+\end{document}
