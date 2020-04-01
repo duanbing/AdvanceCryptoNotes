@@ -1,0 +1,224 @@
+ \documentclass[a4paper,11pt]{article}
+
+ % define the title
+\author{duanbing@baidu.com}
+\title{zkp for MPC}
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{graphicx}
+% margin control
+\usepackage{geometry}
+\geometry{a4paper,scale=0.8}
+\usepackage{float}
+\usepackage{cite}
+
+
+% flow control
+\usepackage{tikz}
+\usetikzlibrary{arrows,shapes,chains}
+
+\newtheorem{myDef}{Definition}
+\newtheorem{myTh}{Theorem}
+
+\begin{document}
+
+\maketitle  
+\tableofcontents
+
+
+\section{ZKP}
+
+ZKP enables us to prove that something is true without revealing any other information.  ZKP is applicable in many areas, including:
+\begin{enumerate}
+\item proving statement on private data, e.g. Yao's billionaire's problem
+\item anonymous authorization, e.g. proving that someone has right to  access the website's restricted area
+\item anonymous payments,   e.g. zcash
+\item outsourcing computation  
+\end{enumerate}
+
+\subsection {an brief explanation for kids}
+
+Assume a polynomial $f(x) = x^3 – 6x^2 + 11x – 6$ which is visualized as Figure 1.  obviously, we can get x = 1, 2, 3 for f(x) = 0.   
+
+\begin{figure}[H]
+\begin{minipage}[t]{0.5\linewidth}
+\centering
+\includegraphics[width=4.2in]{./images/zkp/f1.png}
+\caption{$f(x) = x^3 – 6x^2 + 11x – 6$}
+\label{fig:side:a}
+\end{minipage}
+\begin{minipage}[t]{0.5\linewidth}
+\centering
+\includegraphics[width=4.2in]{./images/zkp/f2.png}
+\caption{blue: $f(x) = x^3 – 6x^2 + 11x – 6$; green: $f2(x) = x^3 – 6x^2 + 10x – 5$}
+\label{fig:side:b}
+\end{minipage}
+\end{figure}
+
+If we modify the original polynomial slightly to $f(x) = x^3 – 6x^2 + 10x – 5$, we can get Figure 2. With such a tiny modification, you can find that it's impossible to share a consecutive chunk of curve for these 2 curves. 
+But we can find a intersection at x = 1 by f2(x) - f(x) = x - 1 = 0.
+
+Also we can evaluate the polynomial at x = 10,  get
+\begin{displaymath}
+\begin{split}
+x^3 - 6x^2 + 11x - 6 = 504  \\
+x^3 - 6x^2 + 10x - 5 = 495
+\end{split}
+\end{displaymath}
+
+In fact out for all the choices of x to evaluate, only  at most 3 choices will have equal evaluations. 
+
+That's how the ZKP works:
+
+\begin {itemize}
+\item Verifier chooses a random value for x  and evaluates the polynomial locally
+\item Verifier gives x to the prover and asks to evaluate the polynomial in question
+\item Prover evaluates his polynomial at x and gives the results to the verifier
+\item Verifier checks if the local result is equal to the prover's result, and if so then the statement is proven with a high confidence. 
+\end{itemize}
+
+how high the confidence will be? if we consider an integer range of x from 1 to $10^{77}$,  the number of points where evaluations are different would be $10^{77} - d$(d is the degree of the polynomial) and the probability that x accidentally hits any of the d shared points is equal to $\frac{d}{10^{77}}$.
+
+\subsection{a general approach on polynomial}
+
+For a general polynomial:  
+\begin{equation}
+f(x) = c_nx^n + ... + c_1x^1 + c_0x^0  \label{con:gp}
+\end{equation}
+
+which can always been factorized as a products of 
+\begin{equation}
+(x-a_0)(x-a_1)...(x-a_n) = 0
+\end{equation}
+due to 
+\begin {myTh}
+Any polynomial of degree 𝑛 with complex coefficients is the product of 𝑛 linear factors.
+\end{myTh}
+
+This theory can be proved here\footnote{https://en.wikipedia.org/wiki/Fundamental\_theorem\_of\_algebra}.
+
+and assume that $a_0, a_1, ... a_t$ are the cofactors of the polynomial in question, hence if the prover want to prove that his polynomial has those roots without revealing the polynomial itself, he need to prove that 
+his polynomial p(x) is the multiplication of $t(x) = \prod_{i=0}^{i=1}(x-a_i)$ which called target polynomial and some arbitrary polynomial h(x), i.e. :
+\begin{equation}
+p(x) = t(x) \cdot h(x)
+\end{equation}
+
+So if the prover cann't find the $h(x) = \frac{p(x)}{t(x)}$ that means p(x) doesn't have the necessary cofactors t(x), in which case the polynomial division will have a remainder. 
+
+Now a new protocol is being come up with:
+\begin{enumerate}
+\item Verifier samples a random value r, calculates t = t(r) (i.e., evaluates) and gives r to the prover
+\item Prover calculates h(x) =p(x) / t(x) and evaluates p(r) and h(r); the resulting values p, h are provided to the verifier
+\item Verifier then checks that p = t ⋅ h, if so those polynomials are equal, meaning that p(x) has t(x) as a cofactor.
+\end{enumerate}
+
+%TODO EXAMPLE here
+
+However, there are some issues here:
+\begin{itemize}
+\item Prover may not know the polynomial at all, he can calculate t=t(r) and selects a random h, get p = t $\cdot$ h, which will be accepted by the verifier as valid
+\item Any polynomial which share the point at r can be constructed because the prover knows x = r 
+\item A higher degree polynomial can be used to satisfy the cofactors check.
+\end{itemize}
+
+\subsection{Obscure Evaluation by homomorphic encryption}
+HM has been introduced in chapter 1.  Let's explicitly encrypt state the encryption function:
+\begin{equation}
+E(v) = g^v\ mod\ n 
+\end{equation}
+
+where n is a large prime, and v is the value we want to encrypt.  It's easy to find E(v) is additive homomorphic encryption algorithm.
+
+So for polynomial \ref{con:gp},  we can encrypt it into:
+\begin{equation}
+\begin{split}
+E(x^n)^{c_n} \cdot ... \cdot E(x^1)^{c_1} \cdot E(x^0)^{c_0}  &=  \\
+(g^{x^n})^{c_n} \cdot ... \cdot (g^{x^1})^{c_1} \cdot (g^{x^0})^{c_0} &= \\
+g^{c_nx^n + ... + c_1x^1 + c_0x^0}
+\end{split}
+\end{equation}
+
+We can update the previous protocol, replacing the s by $g^s$.  and preprocessing the $s^i$ to $g^{s^i}$ by verifier.  In this way,  the verifier hide the r from prover, and so is the d, but we can not stop the prover to forge $g^s$ to satisfy this equation:
+\begin{equation}
+g_p = (g_h)^{t(s)}
+\end{equation}
+
+so we need make sure if and only if $g^p$ was homomorphically "multiplied" by some value from $g^{c_i * s^i}$  and nothing else.  That's why we need Knowledge-of-Exponent Assumption, shortly KEA to prevent from forging $g^s$ by hiding $g^s$
+
+\subsubsection{Knowledge-of-Exponent Assumption}
+
+\begin{itemize}
+\item Verifier chooses random s, $\alpha$ and  provides evaluation for x = s for power 1 and "shift":
+\begin{equation}
+(g^s, g^{\alpha \cdot s})
+\end{equation}
+and send this tuple to prover.
+\item Prover applies the coefficient c:  
+\begin{equation}
+((g^s)^c, (g^{\alpha \cdot s})^c) = (g^{c\cdot s}, g^{\alpha\cdot c \cdot s})
+\end{equation}
+and send the right side of the equation to verifier.
+\item Verifier checks:
+\begin{equation}
+(g^{c\cdot s})^{\alpha} =  g^{\alpha\cdot c \cdot s}
+\end{equation}
+\end{itemize}
+
+Such construct restricts the prover to use only the encrypted s, namely $g^s$ since prover don't know $\alpha$, so he cann't forge $g^s, g^{\alpha \cdot s}$ meanwhile.  Hence if the prover can not forge $g^s$, nor he can forge $c_i$.
+
+So for a degree d polynomial of \ref{con:gp}:
+\begin{itemize}
+\item Verifier provides encrypted powers $g^{s^0}..., g^{g^d}$ and theirs shifts $g^{\alpha \cdot s^0}, ..., g^{\alpha \cdot s^d}$
+
+\item Prover: 
+\begin{itemize}
+\item evaluate encrypted polynomial with provided powers of s: 
+\begin{equation}
+g^{p(s)} = (g^{s^0})^{c_0} \cdot (g^{s^1})^{c_1} ... (g^{s^d})^{c_d} = g^{c_0s^0 + ... + c_ds^d}
+\end{equation}
+\item evaluates encrypted "shifted" polynomial with the corresponding $\alpha-shifts$ of the powers of s:
+\begin{equation}
+g^{p^{'}} = g^{\alpha p(s)} = ... =  g^{(\alpha{c_0s^0 + ... + c_ds^d})}
+\end{equation}
+\item provides the result of $g^p, g^{p^{'}}$ to the verifier
+\end{itemize}
+
+\item Verifier checks: $(g^p)^{\alpha} = g^{p^{'}} $
+\end{itemize}
+
+Until now, we can make sure the prover use the right d, s and $c_i$ to generate the proof. but it's not zero-knowledge due to exposing  $g^p, g^{p^{'}}, g^h$ to the verifier, which can be used in 
+\begin{equation}  
+\begin{split}
+g^p = (g^h)^{t(s)}   \label{con:zero} \\
+(g^h)^a = g^{p^{'}}
+\end{split}
+\end{equation} 
+
+\subsubsection{Zero Knowledge}
+
+To stop the prover to extract knowledge from verifier,  we adopt the KEA again, encrypt the x to $x^{\delta}$
+We can transform \ref{con:zero} to 
+\begin{displaymath}
+\begin{split}
+(g^p)^{\delta} = ((g^h)^{t(s)})^{\delta}    \\
+((g^h)^a)^{\delta}  = (g^{p^{'}})^{\delta} 
+\end{split}
+\end{displaymath}
+
+and the checks still holds:
+\begin{displaymath}
+\begin{split}
+g^{\delta \cdot p} = g^{\delta \cdot t(s) h}  \\
+g^{\delta \cdot \alpha p} = g^{\delta \cdot p^{'}} 
+\end{split}
+\end{displaymath}
+
+\section{Non-Interactivity}
+
+
+%https://medium.com/@VitalikButerin/exploring-elliptic-curve-pairings-c73c1864e627
+
+\bibliographystyle{plain}
+\bibliography{chapter2_ref} %这里的这个ref就是对文件ref.bib的引用
+
+\end{document}
