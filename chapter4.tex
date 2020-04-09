@@ -263,6 +263,134 @@ s^i = s_A^i s_B^i s_C^i,  \alpha = \alpha_A \alpha_B \alpha_C
 \end{equation}
 
 Then how do we verify that the participants have been consistent with every value of CRS? 
+%https://medium.com/@imolfar/why-and-how-zk-snark-works-3-non-interactivity-distributed-setup-c0310c0e5d1c
+
+We take power 1 of s as the canonical value, and check every other power for consistent with it:
+\begin{displaymath}
+e(g^{s^i}, g) = e(g^{s^1}, g^{s^{i-1}}) |_{i \in \{2, ..., d\}}
+\end{displaymath}
+
+and we now check if the $\alpha$-shift of values in the previous step is correct:
+
+\begin{displaymath}
+e(g^{s^i}, g^{\alpha}) = e(g^{\alpha{s^i}}, g) |_{i \in \{1, ..., d\}}
+\end{displaymath}
+
+Then, in case of the adversary participant is in the first of last in the chain, we require every participant except the first one to encrypt and publish his	 secret parameters.  
+
+For  example, Alice, Bob and Carol are in a chain:
+
+Bob publishes: 
+\begin{displaymath}
+(g^{s_B^i}, g^{\alpha_B}, g^{\alpha_B{s_B^i}}) |_{i \in \{1, ... , d\}}
+\end{displaymath}
+
+and this allows to validate that Bob's CRS is a proper multiple of Alice's parameters, for i in 1, 2, ..., d:
+
+\begin{displaymath}
+\begin{split}
+e(g^{s_{AB}^i}, g)  &= e(g^{s_A^i},g^{s_B^i} ) \\
+e(g^{{\alpha}_{AB}}, g) &= e(g^{\alpha_A}, g^{\alpha_B}) \\
+e(g^{{\alpha}_{AB}{s_{AB}^i}}, g) &= e(g^{\alpha_A s_A^i}, g^{\alpha_B s_B^i}) 
+\end{split}
+\end{displaymath}
+
+Similarly Carol will have to prove that her CRS is a proper multiple of Alice-Bob’s CRS.
+
+\section{Succinct Non-Interactive Argument of Knowledge of Polynomial}
+
+Having agreed upon target polynomial t(x) and degree d,  for $\{s^i\}|_{i \in [d]}$: 
+
+\begin{itemize}
+\item Setup
+\begin{itemize}
+\item sample random value s, $\alpha$
+\item calculate encryptions $g^{\alpha}$ and $\{g^{s^i}\}_{i \in [d]}$, $\{g^{\alpha s^i}\}_{i \in [d]}$, 
+\item proving key:  ($\{g^{s^i}\}_{i \in [d]}$, $\{g^{\alpha s^i}\}_{i \in [d]}$), and verification key : $(g^{\alpha}, g^{t(s)})$
+\end{itemize}
+\item proving
+\begin{itemize}
+\item assign coefficients $\{c_i\}_{i \in [d]}$, $p(x) = \sum_{i=1}^{i=d}{c_i x^i}$
+\item calculate polynomial $h(x) = \frac{p(x)}{t(x)}$
+\item evaluate encrypted polynomial $g^{p(s)}$ and $g^{h(s)}$ using ${g^{s^i}}_{i \in [d]}$ 
+\item sample ramdon $\delta$
+\item set the randomized proof $\pi = (g^{\delta p(s)}, g^{\delta h(s)}, g^{\delta \alpha p(s)})$
+\end{itemize}
+\item Verification
+\begin{itemize}
+\item parse proof $\pi$ as $(g^p, g^h, g^{p^{'}})$
+\item check polynomial restriction$ e(g^{p^{'}}, g) = e(g^p, g^{\alpha})$
+\item check polynomial cofactors $e(g^p, g) = e(g^{t(s)}, g^h)$
+\end{itemize}
+\end{itemize}
+
+
+\section{General-Purpose Computation}
+
+For any computing like   
+\begin{equation}
+l(x)\ operator\ r(x) = o(x) ,\  where\ operator \in \{+, -, *, /\}
+\end{equation}
+
+and at point \textbf{a}, s.t. l(a) operator r(a) == o(a).
+
+Given an example,  3 X 2 = 6,  can be represented by simple polynomial l(x) = 3x, r(x) = 2x,  0(x) = 6x,  and where a = 1, l(a) * r(a) = o(a).
+Then the operation polynomial can be converted to :
+\begin{equation}
+\begin{split}
+l(x)\ \times\ r(x) &= o(x)  \\
+ 6x^2 - 6x &= 0 \\
+ \end{split}
+\end{equation}
+
+which definitely pass the point(1, 0).  and has (x - 1) as a cofactor.
+
+So if the prover provides such polynomial l(x), r(x) and o(x) instead of p(x) then the verifier will accept it's valid since it's also divide by t(x) = x - 1.
+
+So, why not just let p(x) = l(x) + r(x) - o(x)? there are 2 counterarguments:
+\begin{itemize}
+\item the multiplication(l(x), r(x)) is not possible since the pairings can only be used once ? TODO
+\item p(x) = l(x) or r(x)  or l(x) - o(x) can still have the cofactor
+\end{itemize}
+
+That's why the l, r and o can only be provided by the prover separately.  
+In essence, the verifier needs to check in encrypted space is that l(s) X r(s) - o(s) = t(s)h(s), While a verifier can perform multiplication using cryptographic pairings. 
+\begin{equation}
+\begin{split}
+e(g^{l(s)}, g^{r(s)})  &= e(g^{t(s)}, g^{h(s)}) \cdot e(g^{o(s)}, g) \\
+e(g, g)^{l(s)r(s)} &= e(g, g)^{l(s)h(s) + o(s)}  \\
+\end{split}
+\end{equation}
+
+Enhance keep the setup phase in Section 3 and update the rest phrase as below:
+\begin{itemize}
+\item Proving
+\begin{itemize}
+\item assign corresponding coefficients to the l(x), r(x), o(x) 
+\item calculate polynomial $h(x) = \frac{l(x) \times r(x) - o(x)}{t(x)}$
+\item evaluate encrypted polynomials $g^{l(s)}, g^{r(s)}, g^{o(s)}, g^{h(s)}\ using\ {g^{s^i}}_{i \in [d]}$
+\item set proof $\pi = (g^l,g^r,g^o,g^h,g^{l^{'}},g^{r^{'}}, g^{o^{'}}) = (g^{l(s)},g^{r(s)},g^{o(s)},g^{h(s)},g^{\alpha l(s)},g^{\alpha r(s)}, g^{\alpha o(s)})$ 
+\end{itemize}
+
+\item Verification
+\begin {itemize}
+\item parse proof $\pi$
+\item polynomial restrictions check:
+\begin{displaymath}
+\begin{split}
+e(g^{l^{'}}, g) = e(g^l, g^{\alpha})  \\
+e(g^{r^{'}}, g) = e(g^r, g^{\alpha}) \\
+e(g^{o^{'}}, g) = e(g^o, g^{\alpha}) \\
+\end{split}
+\end{displaymath}
+\end{itemize}
+\end{itemize}
+
+We have updated the protocol to support zkp for single operator. 
+For multiple operators like a x b x c,  we can unfold it to R1CS.   and then transform it to QAP by Lagrange interpolation.
+ 
+ 
+ 
 
 
 \bibliographystyle{plain}
