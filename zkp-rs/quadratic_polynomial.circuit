@@ -1,9 +1,0 @@
-(in a b c)
-(out x)
-(verify b x)
-
-(program
-    (= temp
-        (* a b))
-    (= x
-        (* 1 (+ (* 4 temp) c 6))))
