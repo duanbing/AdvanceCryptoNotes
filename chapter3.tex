@@ -122,9 +122,98 @@ Proof omits and you can find it easily.
 
 \section{Bilinear Mapping Construction on ECC}
 %https://en.wikipedia.org/wiki/Boneh%E2%80%93Lynn%E2%80%93Shacham
+Again giving a general definition of bilinear mapping:
+
+Let $G_1, G_2$ be the two addictive cyclic group, of prime order q, and $G_T$ another cyclic group of order q written multiplicatively. A pair is a map : 
+\begin {equation}
+e:  G_1 \times G_2  \mapsto G_T
+\end{equation}
+
+which satisfies the following properties:
+
+\begin{itemize}
+\item Bilinearity: $\forall a, b \in F_q^{*}, \forall P \in G_1, Q \in G_2 : e(aP, bQ) = e(P, Q)^{ab}$
+\item Non-degeneracy: $ \forall P \in G_1, P \ne 0, Q \in G_2 , Q \ne 0: e(P, Q) \ne 1$
+\item Computability: There exists an efficient algorithm to compute $e$.
+\end{itemize}
+
+From Pairing-Based Cryptography \footnote{https://courses.csail.mit.edu/6.897/spring04/L25.pdfs}, we can get more reductions and applications.
+
+About how to construct $e$,   TBD...
+ 
+
 \subsection {BLS}
 %https://medium.com/cryptoadvance/bls-signatures-better-than-schnorr-5a7fe30ea716
+Based on ECC and Bilinear Mapping, we have 
+\begin{equation}
+\begin{split}
+e(P, H(m)) &= e(k * G, H(m))  \\
+    &= e(G, k*H(m))   \\
+    &= e(G, S) 
+\end{split}
+\end{equation}
+where P is the public key, and G is the generator of the addictive cyclic group, and k is the private key.  H is a hash function, m is the message to be signed.  S is the signature.
 
+BLS can be used in many scenarios. 
+For signature aggregation,   let $S = S_1 + S_2 + ... + S_n$, $S_i$ is the signature of transaction i with Public key $P_i$ and message $m_i$, and there are n txs in block, so we can replace all the n sigs with
+
+\begin{equation}
+\begin{split}
+e(G, S) &=  e(G, S_1 + ... +S_n)  \\
+&= e(G, S_1) \times e(G, S_2) .... \\
+&= e(k_1 \times  G, H(m_1)) *…* e(k_n \times G, H(m_k)) \\
+&= e(P_1, H(m_1)) \times  e(P_2, H(m_2)) ... e(P_n, H(m_n))
+\end{split}
+\end{equation}
+so we can save a large of storage by using it replacing the original signatures in a block.
+
+
+
+\begin{itemize}
+
+\item Setup: 
+
+For m-n multi-sign (e.g. 2-3 multi-sign),  generate a aggregation signature by 
+\begin{equation}
+P = a_1\times P_1 + .. + a_n\times P_n, a_i = hash(P_i, \{P_i\}_{i \in [d]})
+\end{equation}
+
+hash can be defined as below:
+e.g. $a_i = hash(P_i || P1 || ... || P_n)$
+
+hash is normal hash function, mapping a message to a string, and H is hash to curve function(meets $e(P, H(m)) = e(k×G, H(m)) = e(G, k×H(m)) = e(G, S)$). 
+
+\item Signing
+
+denoting $MK_i$ as the membership key for each member,
+\begin{equation}
+MK_i = (a_1  k_1) \times H(P, i) + ... +  (a_n  k_n) \times H(P, i)
+\end{equation}
+
+Then we can derive $ e(G, MK_i) = e(P, H(P, i))$.
+
+Now let's say we want to sign a transaction only with keys $k_1$, $k_3$, we generates 2 signs:  $S_1 = k_1 \times H(P,m) + MK_1,  S_3 = k_3 \times H(P,m) + MK_3$, and add them up to obtain single signature and key:
+
+$(S^{'}, P^{'}) = (S_1+S_3,  P_1 + P_3)$
+
+where m is the message. 
+
+\item Verifying
+
+For verification, we need check:  $e(G, S^{'}) = e(P^{'}, H(P, m)) e(P, H(P, 1) + H(P, 3))$
+
+\begin{displaymath}
+\begin{split}
+e(G, S^{'}) &= e(G, S_1 + S_3)  \\
+&= e(G, k_1 \times H(P, m) + k_3 \times H(P, m) + MK_1 + MK_3)  \\
+&= e(G, k_1 \times H(P, m) + k_3 \times H(P, m)) e(G, MK_1 + MK_3) \\
+&= e(k_1 \times G + k_3 \times G, H(P, m)) e(P, H(P, 1) + H(P, 3)) \\
+&= e(P^{'}, H(P, m)) e(P, H(P, 1) + H(P, 3))
+\end{split}
+\end{displaymath}
+
+
+\end{itemize}
 
 % https://github.com/JHUISI/charm 
 % https://crypto.stanford.edu/pbc/download.html
