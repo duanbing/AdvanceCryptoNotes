@@ -35,6 +35,15 @@ A commitment schema is cryptographic primitive that allows one to commit to a ch
 
 Pedersen Commitment is introduced firstly in \cite{pedersen1991non} aiming to verify someone(verifier) has received correct information about the secret without talking with other persons(prover). 
 %https://crypto.stackexchange.com/questions/11923/difference-between-pedersen-commitment-and-commitment-based-on-elgamal
+Given two public and large primes p and q such that q | p - 1, and generator g of the order-q subgroup $G \in  Z_p^{*}$, given two random $a, r \in Z_q$, we have that in order to commit to a message $m \in Z_q$, we just have to compute the commitment
+\begin{equation}
+c = g^m h^r (mod\ p), where\ h = g^a(mod\ p) 
+\end{equation}
+
+Then, to open the commitment, we need values m and r to be revealed, so that the receiver can verify the commitment.    This is the original protocol in  \cite{pedersen1991non}.  
+
+
+ 
 
 
 %https://whitepaper.io/document/63/enigma-whitepaper
