@@ -379,7 +379,7 @@ fixnum digit  total data   time       Kops/s
 [^7]: https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#ptx-machine-model
 [^8]: https://en.wikipedia.org/wiki/Montgomery_modular_multiplication
 [^9]: https://cp-algorithms.com/algebra/montgomery_multiplication.html
-[^10]: The Montgomery Powering Ladder http://cr.yp.to/bib/2003/joye-ladder.pdf
+[^10]: http://cr.yp.to/bib/2003/joye-ladder.pdf
 [^11]: https://github.com/CodaProtocol/gpu-groth16-prover-3x
 
 [^12]: http://www.just.edu.jo/~tawalbeh/nyit/csci860/notes/high.pdf
